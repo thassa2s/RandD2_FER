@@ -15,6 +15,8 @@
 #include "brsu_srvs/ReturnString.h"
 
 #include <fstream>
+#include <ImageNormalizer.cpp>
+#include <FaceRegionEstimator.cpp>
 
 namespace enc = sensor_msgs::image_encodings;
 
@@ -47,13 +49,43 @@ int main( int argc, char **argv )
   std::cout << "Coordinate: " << coordinate << std::endl;*/
   //Create sensor_msg
   cv_bridge::CvImage cvImage;
-  cvImage.image = cv::imread("/home/teenarahul/Passbild.jpg", CV_LOAD_IMAGE_COLOR);
-  if ( !cvImage.image.data )
+  //cvImage.image = cv::imread("/home/teenarahul/Passbild.jpg", CV_LOAD_IMAGE_COLOR);
+  IplImage *iplImg =  cvLoadImage("/home/teenarahul/Passbild.jpg", CV_LOAD_IMAGE_COLOR);
+ // if ( !cvImage.image.data && iplImg == NULL )
+  if ( !iplImg )
   {
     std::cout << "Failed to load image. " << std::endl;
   }
   else
   {
+    bool verbose = true;
+    CvPoint lEyePos; 
+    lEyePos.x = 1903;
+    lEyePos.y = 1375;
+    CvPoint rEyePos;
+    rEyePos.x = 1221;
+    rEyePos.y = 1408;
+
+    //get information about the boundaries of the face.
+    FaceRegionEstimator *faceRegionEst = new FaceRegionEstimator(verbose);
+    FaceRegion faceRegion = faceRegionEst->estimateFaceBoundaries(lEyePos, rEyePos);
+
+    // Convert iplImage to grey scale.
+    if (verbose)
+            cout << endl << "converting iplImage to grey scale.";
+    
+    IplImage *greyImage = cvCreateImage(cvGetSize(iplImg), IPL_DEPTH_8U, 1);
+    cvCvtColor(iplImg, greyImage, CV_RGB2GRAY);
+    
+    //Normalize image
+
+    ImageNormalizer *normalizer = new ImageNormalizer(200, 200, verbose);
+    IplImage *normalizedImage = cvCreateImage(cvSize(200, 200), 8, 1);
+    normalizer->normalizeImage(greyImage, normalizedImage, lEyePos, rEyePos, faceRegion, false, false);
+    cout << endl << "after normalizing image." << endl;
+
+    cvCvtColor(greyImage, iplImg, CV_GRAY2RGB);
+
     std::cout << "Creating the FaceList message" << std::endl;
     //Set header
     //Set encoding
@@ -61,18 +93,21 @@ int main( int argc, char **argv )
     brsu_msgs::Face face;
 
     face_list.num_faces = 1;
-    face.leftEyeCenterX = 1221;
-    face.leftEyeCenterY = 1408;
-    face.rightEyeCenterX = 1903;
-    face.rightEyeCenterY = 1375;
-
+    face.leftEyeCenterX = normalizer->getLeftEyePosition().x;
+    face.leftEyeCenterY = normalizer->getLeftEyePosition().y;
+    face.rightEyeCenterX = normalizer->getRightEyePosition().x;
+    face.rightEyeCenterY = normalizer->getRightEyePosition().y;
+  
+    std::cout << "Eye positions after normalization: Left: " << face.leftEyeCenterX << "," << face.leftEyeCenterY << " Right: " << face.rightEyeCenterX << "," << face.rightEyeCenterY << std::endl;
+    cvImage.encoding = enc::BGR8;
     try {
+      cv::Mat tmpImg(iplImg);
+      cvImage.image = tmpImg;
       cvImage.toImageMsg(face.image);
     }catch( cv_bridge::Exception& e ) {
       ROS_ERROR("cv_bridge exception: %s", e.what());
       return 0;
     }
-
     face_list.faces.push_back(face);
 
     //publish face list

@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 2.4.6)
 
 include($ENV{ROS_ROOT}/core/rosbuild/rosbuild.cmake)
 #include_directories(/home/ggiorgana/RoboCupAtHome/brsu_common/brsu_msgs/msg_gen/cpp/include/)
+include_directories(/home/teenarahul/RandD2/SourceCode/RoboCupAtHome/brsu_perception/brsu_fer_test/include/brsu_fer_test/)
 
 # Set the build type.  Options are:
 #  Coverage       : w/ debug symbols, w/o optimization, w/ code-coverage
