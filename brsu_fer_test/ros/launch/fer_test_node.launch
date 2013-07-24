@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<launch>
+    <include file="$(find brsu_facial_expression)/ros/launch/facial_expression_node.launch"/>
+    <node pkg="brsu_fer_test" type="FER_test_node" name="brsu_fer_test" output="screen" respawn="false">
+      <param name="verbose" value="true"/>
+      <param name="normalize_image" value="false"/>
+      <param name="save_normalized_image" value="false"/>
+      <!-- param name="folder_path" value="/home/teenarahul/RandD2/ImageDatabase/FACES/"/-->
+      <param name="folder_path" value="/home/teenarahul/RandD2/ImageDatabase/normalized_without_hist_eqln/"/>
+      <!-- param name="metadata_filename" value="MetaData_FACES_Database.txt" /-->
+      <param name="metadata_filename" value="MetaData_Normalized_Images.txt" />
+      <param name="normalized_image_foldername" value="normalized_without_hist_eqln/" />
+      <param name="normalized_images_metadata_filename" value="MetaData_Normalized_Images.txt" />
+    </node>
+</launch>
