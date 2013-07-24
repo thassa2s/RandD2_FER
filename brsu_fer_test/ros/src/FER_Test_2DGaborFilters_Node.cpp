@@ -81,13 +81,15 @@ void update_global_vars_from_ROS_params( ros::NodeHandle nh )
 
 bool read_next_image_details_from_metadatafile( ifstream &metadata_file, string &image_filename_out, CvPoint &l_eyepos_out, CvPoint &r_eyepos_out, string &expression_label_out )
 {
-	if ( metadata_file.eof() )
+	if ( metadata_file.peek() == EOF )
 	{
 		return false;
 	}
 	metadata_file >> image_filename_out;
 	metadata_file >> l_eyepos_out.x >> l_eyepos_out.y >> r_eyepos_out.x >> r_eyepos_out.y;
 	metadata_file >> expression_label_out;
+	char ch;
+	metadata_file.get(ch); //to catch the newline character (\n) at the end of each line
 	if ( verbose )
 	{
 		cout << "**********************************************************" << endl;
@@ -242,8 +244,8 @@ void expression_callback(const std_msgs::String& msg)
 string get_date_time_string()
 {
 	time_t curr_time = time(0);
-    char time_char_arr[29];
-    strftime(time_char_arr, 29, "Date_%Y_%m_%d_Time_%H_%M_%S", gmtime(&curr_time));
+    char time_char_arr[27];
+    strftime(time_char_arr, 27, "Date_%Y_%m_%d_Time_%H_%M", gmtime(&curr_time));
     return string(time_char_arr);
 }
 
