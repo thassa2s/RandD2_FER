@@ -105,10 +105,10 @@ bool read_next_image_details_from_metadatafile( ifstream &metadata_file, string 
 void append_to_metadata_file( string file, string image_filename, CvPoint l_eyepos, CvPoint r_eyepos, string expression_label="" )
 {
 	ofstream outfile;
-	outfile.open(file.c_str(), std::ofstream::app);
+	outfile.open(file.c_str(), ios::app);
     if ( !outfile )
     {
-    	cout << "Could not open new metadata file." << endl;
+    	cout << "Could not open new metadata file " << file << " for writing." << endl;
     	return;
     }
     if ( outfile.tellp() != 0 )
@@ -117,7 +117,7 @@ void append_to_metadata_file( string file, string image_filename, CvPoint l_eyep
     }
     else
     {
-    	outfile << "** Format: <image file name> <left eye position: X> < left eye position: Y> <right eye position: X> < right eye position: Y> <expression label>";
+    	outfile << "** Format: <image file name> <left eye position: X> < left eye position: Y> <right eye position: X> < right eye position: Y> <expression label>" << endl;
     }
     outfile << image_filename << " ";
     outfile << l_eyepos.x << " " << l_eyepos.y << " " << r_eyepos.x << " " << r_eyepos.y << " ";
@@ -264,7 +264,7 @@ void append_to_results_file( string results_file, string image_filename, string 
     }
     else
     {
-    	cout << "** Format: <Image_file_name> <correct_expression> <recognized_expression>";
+    	cout << "** Format: <Image_file_name> <correct_expression> <recognized_expression>" << endl;
     }
     outfile << image_filename << " " << expr_label << " " << recognized_expression_label;
     outfile.close();
