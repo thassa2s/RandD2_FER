@@ -8,13 +8,18 @@
 #include <fstream>
 #include <stdio.h>
 #include <string.h>
+#include <boost/tokenizer.hpp>
 
 #include <opencv2/opencv.hpp>
+
+#define JAFFE 0
+
+using namespace std;
 
 CvPoint left_eye_pos, right_eye_pos;
 bool both_eye_positions_captured = false;
 
-using namespace std;
+ofstream outfile;
 
 void mouseClickEvent(int event, int pixel_x, int pixel_y, int flags, void* param)
 {
@@ -56,31 +61,74 @@ void show_image( string full_imagename, string window_name )
     cvReleaseImage( &image );
 }
 
-void save_eye_positions( string folder_path, string image_name )
+string get_emotion_label_from_char( char ch1, char ch2 )
 {
-	//Enhance to metadata file, if the correct expression can be retrieved from file name of the image.
-	//Also, get the name of the metadata file as command line arguments.
+	ch1 = tolower( ch1 );
+	ch2 = tolower( ch2 );
+	switch ( ch1 )
+	{
+	case 'a': return string("anger");
+	case 'd': return string("disgust");
+	case 'f': return string("fear");
+	case 'h': return string("joy");
+	case 's': if ( JAFFE && ( ch2 == 'u' ) )
+	              return string("surprise");
+		      return string("sadness");
+	case 'n': return string("neutral");
+	}
+}
 
-	ofstream outfile;
-	string full_filename = folder_path + string( "ImageEyePositions.txt" );
-	outfile.open( full_filename.c_str(), ios::app );
-    if ( !outfile )
+void save_metadata( string image_name )
+{
+	boost::char_separator<char> separator("_");
+
+    int index = -1;
+	if ( JAFFE )
+	{
+		boost::char_separator<char> separator1(".");
+		separator = separator1;
+		index = 2;
+	}
+	else
+	{
+		boost::char_separator<char> separator1("_");
+		separator = separator1;
+		index = 4;
+	}
+    boost::tokenizer< boost::char_separator<char> > string_tokens(image_name, separator);
+	char ch1 = 'a';
+	char ch2 = 'n';
+    int i = 0;
+
+    for( boost::tokenizer< boost::char_separator<char> >::iterator it = string_tokens.begin(); it != string_tokens.end(); it++ )
     {
-    	cout << "Could not open file " << full_filename << " for writing." << endl;
-    	return;
-    }
-    if ( outfile.tellp() != 0 )
+		i++;
+		if ( i == index )
+		{
+			ch1 = it.current_token().at( 0 );
+			if ( JAFFE )
+				ch2 = it.current_token().at( 1 );
+		}
+	}
+    string emotion_label;
+    if ( JAFFE )
     {
-    	outfile << endl;
+    	emotion_label = get_emotion_label_from_char( ch1, ch2 );
     }
     else
     {
-    	outfile << "** Format: <image file name> <left eye position: X> < left eye position: Y> <right eye position: X> < right eye position: Y>" << endl;
+    	emotion_label = get_emotion_label_from_char( ch1, ' ' );
     }
+    outfile << endl;
     outfile << image_name << " ";
     outfile << left_eye_pos.x << " " << left_eye_pos.y << " ";
-    outfile << right_eye_pos.x << " " << right_eye_pos.y;
-    outfile.close();
+    outfile << right_eye_pos.x << " " << right_eye_pos.y << " ";
+    outfile << emotion_label;
+
+    cout << image_name << " ";
+    cout << left_eye_pos.x << " " << left_eye_pos.y << " ";
+    cout << right_eye_pos.x << " " << right_eye_pos.y << " ";
+    cout << emotion_label;
 }
 
 int main( int argc, char *argv[] )
@@ -96,11 +144,21 @@ int main( int argc, char *argv[] )
 	string full_filename = folder_path + argv[2];
     ifstream infile;
     infile.open( full_filename.c_str() );
-    if ( !infile )
+    if ( !infile.is_open() )
     {
     	cout << "Could not open file: " << full_filename << endl;
     	return -1;
     }
+
+	string full_output_filename = folder_path + string( "Metadata.txt" );
+	outfile.open( full_output_filename.c_str(), ios::out );
+    if ( !outfile.is_open() )
+    {
+    	cout << "Could not open file " << full_filename << " for writing." << endl;
+    	return -1;
+    }
+	outfile << "** Format: <image file name> <left eye position: X> < left eye position: Y> <right eye position: X> < right eye position: Y> <expression label>";
+
 
     cout << "***** Instructions *****" << endl;
     cout << "First left-click on the person's right eye, and then left-click on the left eye." << endl;
@@ -115,7 +173,7 @@ int main( int argc, char *argv[] )
     	full_imagename = folder_path + image_name;
     	both_eye_positions_captured = false;
     	show_image( full_imagename, image_name );
-    	save_eye_positions( folder_path, image_name );
+    	save_metadata( image_name );
     	infile >> image_name;
     }
     infile.close();
