@@ -35,6 +35,8 @@ string normalized_images_foldername = "normalized/";
 string normalized_images_metadata_filename = "MetaData_Normalized_Images.txt";
 string FER_results_filename_prefix = "FER_Gabor_Results_";
 
+ofstream outfile;
+
 void update_global_vars_from_ROS_params( ros::NodeHandle nh )
 {
     if ( !nh.getParam("/brsu_fer_test/verbose", verbose) )
@@ -179,12 +181,17 @@ IplImage* getIplImage( string folder_path, string image_filename, CvPoint l_eyep
    			append_to_metadata_file( new_metadata_file, image_filename, l_eyepos_out, r_eyepos_out, expression_label );
    		}
    	}
+   	//cvReleaseImage( &normalizedImage );
+   	//cvReleaseImage( &greyImage );
+   	//cvReleaseImage( &iplImg );
+
    	return normalizedColorImg;
 }
 
 bool constructCvImage( string folder_path, string image_filename, CvPoint l_eyepos_in, CvPoint r_eyepos_in, string expression_label, cv_bridge::CvImage &cvImage_out, CvPoint &l_eyepos_out,  CvPoint &r_eyepos_out)
 {
 	IplImage *iplImg = getIplImage( folder_path, image_filename, l_eyepos_in, r_eyepos_in, expression_label, l_eyepos_out, r_eyepos_out);
+    cvImage_out.image.release();
 	if ( !iplImg )
 	{
 		cout << "Failed to get IplImage. " << endl;
@@ -195,11 +202,19 @@ bool constructCvImage( string folder_path, string image_filename, CvPoint l_eyep
     {
     	cv::Mat tmpImg(iplImg);
         cvImage_out.image = tmpImg;
+
+    	cvNamedWindow( "before publish" );
+    	cvShowImage( "before publish", iplImg );
+    	cvWaitKey( 1000 );
+    	cvDestroyWindow( "before publish");
+
     }catch( cv_bridge::Exception& e )
     {
     	ROS_ERROR("cv_bridge exception: %s", e.what());
     	return false;
     }
+   	//cvReleaseImage( &iplImg );
+
     return true;
 }
 
@@ -251,23 +266,8 @@ string get_date_time_string()
 
 void append_to_results_file( string results_file, string image_filename, string expr_label )
 {
-	ofstream outfile;
-	outfile.open(results_file.c_str(), std::ofstream::app);
-    if ( !outfile )
-    {
-    	cout << "Could not open results file." << endl;
-    	return;
-    }
-    if ( outfile.tellp() != 0 )
-    {
-    	outfile << endl;
-    }
-    else
-    {
-    	cout << "** Format: <Image_file_name> <correct_expression> <recognized_expression>" << endl;
-    }
+   	outfile << endl;
     outfile << image_filename << " " << expr_label << " " << recognized_expression_label;
-    outfile.close();
 }
 
 int main( int argc, char **argv )
@@ -296,7 +296,16 @@ int main( int argc, char **argv )
     string line_read;
     getline( infile, line_read );
 
-    string results_file = folder_path + string("../Results/") + FER_results_filename_prefix + get_date_time_string() + string(".txt");
+    string results_file = folder_path + FER_results_filename_prefix + get_date_time_string() + string(".txt");
+
+    outfile.open( results_file.c_str() );
+    if ( !outfile.is_open() )
+    {
+    	cout << "Could not open results file: " << results_file << endl;
+    	return -1;
+    }
+
+	outfile << "** Format: <Image_file_name> <correct_expression> <recognized_expression>";
 
     double rate = 50; //50Hz
     ros::Rate loop_rate(rate);
@@ -331,11 +340,14 @@ int main( int argc, char **argv )
        			}
        			cout << "Exiting brsu_fer_test node..." << endl;
        			infile.close();
+       		    outfile.close();
        			return 0;
        		}
         	//invoke the service or leave it to call back.. better option: service
         }
+       	loop_rate.sleep();
     }
     infile.close();
+    outfile.close();
     return 0;
 }
