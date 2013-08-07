@@ -4,25 +4,48 @@
  *  Created on: Jul 30, 2013
  *      Author: teenarahul
  */
-#include <GFExtractorOnImage.cpp>
+#include <iostream>
+#include <fstream>
+#include <opencv2/opencv.hpp>
+
+#include <GFExtractorOnImage.h>
+#include <ImageNormalizer.h>
+
+#define NORM_IMG_WIDTH 48
+#define NORM_IMG_HEIGHT 48
+
+using namespace std;
 
 ofstream training_data_outfile;
 ofstream test_data_outfile;
 
-bool getFeatureVector( string full_image_filename, string feature_descriptor, vector1Df &feature_vector_out )
+bool get_feature_vector( string full_image_filename, string feature_descriptor, CvPoint left_eye, CvPoint right_eye, vector1Df &feature_vector_out )
 {
-	IplImage* image = cvLoadImage( full_image_filename.c_str(), CV_LOAD_IMAGE_GRAYSCALE);
-    if ( !image )
+	IplImage* src = cvLoadImage( full_image_filename.c_str(), CV_LOAD_IMAGE_GRAYSCALE);
+	IplImage* normalized_img;
+    if ( !src )
     {
     	cout << "Error opening image: " << full_image_filename << "." << endl;
     	return false;
     }
+	if ( src->height != NORM_IMG_WIDTH || src->width != NORM_IMG_HEIGHT )
+	{
+		CvRect faceRegion = estimateFaceBoundaries( left_eye, right_eye );
+		normalized_img = normalizeImage( src, left_eye, right_eye, faceRegion, NORM_IMG_WIDTH, NORM_IMG_HEIGHT, false, false );
+	}
+	else
+	{
+		cvCopy( src, normalized_img );
+	}
     if ( strcmp( feature_descriptor.c_str(), "gabor" ) == 0 )
     {
     	GFExtractorOnImage *gabor_feature_extractor = new GFExtractorOnImage();
-    	gabor_feature_extractor->extractFeaturesOnImage(image, feature_vector_out);
-    	//cout << "Feature vector size: " << feature_vector_out.size() <<"\t Computed size: " << image->height * image->width * 40 << endl;
+    	gabor_feature_extractor->extractFeaturesOnImage( normalized_img, feature_vector_out );
+    	//cout << "Feature vector size: " << feature_vector_out.size() <<"\t Computed size: " << normalized_img->height * normalized_img->width * 40 << endl;
     }
+    cvReleaseImage( &normalized_img );
+	cvReleaseImage( &src );
+
     return true;
 }
 
@@ -46,8 +69,9 @@ void append_to_test_data_file( vector1Df &feature_vector )
 	test_data_outfile << endl;
 }
 
-void generateTrainingData( string folder_path, string full_image_list_filename, string feature_descriptor, bool create_test_data_file_flag )
+void generateTrainingData( string folder_path, string image_list_filename, string feature_descriptor, bool create_test_data_file_flag )
 {
+	string full_image_list_filename = folder_path + image_list_filename;
 	ifstream infile;
 	infile.open( full_image_list_filename.c_str() );
 	if ( !infile.is_open() )
@@ -55,7 +79,7 @@ void generateTrainingData( string folder_path, string full_image_list_filename, 
 		cout << "Error opening file: " << full_image_list_filename <<"." << endl;
 		return;
 	}
-	string full_training_data_filename = folder_path +  string( "Training_Data_" ) + feature_descriptor + string( ".txt" );
+	string full_training_data_filename = folder_path +  string( "Training_Data_" ) + image_list_filename + string("_") + feature_descriptor + string( ".txt" );
 	training_data_outfile.open( full_training_data_filename.c_str(), ios::out );
 	if ( !training_data_outfile.is_open() )
 	{
@@ -65,7 +89,7 @@ void generateTrainingData( string folder_path, string full_image_list_filename, 
 
 	if ( create_test_data_file_flag )
 	{
-	    string full_test_data_filename = folder_path + string( "Test_Data_from_Training_Data_" ) + feature_descriptor + string( ".txt" );
+	    string full_test_data_filename = folder_path + string( "Test_Data_" ) + image_list_filename + string("_") + feature_descriptor + string( ".txt" );
 	    test_data_outfile.open( full_test_data_filename.c_str(), ios::out );
 	    if ( !test_data_outfile.is_open() )
 	    {
@@ -77,6 +101,7 @@ void generateTrainingData( string folder_path, string full_image_list_filename, 
     string image_filename;
     string full_image_filename;
     string emotion_label;
+    CvPoint left_eye, right_eye;
 
     infile >> image_filename;
 
@@ -85,12 +110,16 @@ void generateTrainingData( string folder_path, string full_image_list_filename, 
 
     while ( infile.peek() != EOF )
     {
+        infile >> left_eye.x;
+        infile >> left_eye.y;
+        infile >> right_eye.x;
+        infile >> right_eye.y;
         infile >> emotion_label;
 
     	full_image_filename = folder_path + image_filename;
     	feature_vector.clear();
 
-    	if ( getFeatureVector( full_image_filename, feature_descriptor, feature_vector ) )
+    	if ( get_feature_vector( full_image_filename, feature_descriptor, left_eye, right_eye, feature_vector ) )
         {
         	append_to_training_data_file( feature_vector, emotion_label );
         	if ( create_test_data_file_flag )
@@ -102,6 +131,8 @@ void generateTrainingData( string folder_path, string full_image_list_filename, 
         infile >> image_filename;
     }
     cout << "Total number of images processed: " << no_of_images_processed << "." << endl;
+    cout << "Feature vector size: " << feature_vector.size() << endl;
+    cout << "Expected feature vector size: " << NORM_IMG_WIDTH * NORM_IMG_HEIGHT * 40 << endl;
     infile.close();
     training_data_outfile.close();
     test_data_outfile.close();
@@ -116,11 +147,8 @@ int main( int argc, char *argv[] )
 		cout << "Give 1 if a test data file should be created from the same images. Give 0, otherwise" << endl;
 		return -1;
 	}
-	string folder_path = argv[1];
-	string full_image_list_filename = folder_path + argv[2];
-	string feature_descriptor = argv[3];
 	bool create_test_data_file_flag =  argv[4][0] - '0';
-    generateTrainingData( folder_path, full_image_list_filename, feature_descriptor, create_test_data_file_flag );
+    generateTrainingData( argv[1], argv[2], argv[3], create_test_data_file_flag );
 
 	return 0;
 }
