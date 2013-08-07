@@ -1,6 +1,6 @@
 #pragma once
 
-#include "cvGaborWiki/CvGaborWiki.cpp"
+#include "cvGaborWiki/CvGaborWiki.h"
 #include "general.h"
 
 class GFExtractorOnImage

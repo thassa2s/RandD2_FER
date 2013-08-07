@@ -1,7 +1,6 @@
 #ifndef GENERAL_H
 #define GENERAL_H
 
-#include <iostream>
 #include <fstream>
 #include <vector>
 #include <string>
