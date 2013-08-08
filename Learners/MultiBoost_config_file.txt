@@ -1,0 +1,8 @@
+stronglearner AdaBoostMH
+learnertype MultiStumpLearner
+fileformat simple 
+classend
+verbose 5
+train /home/teenarahul/RandD2/ImageDatabase/Faces-collection/pictures/Training_Data_Metadata_Faces_Pictures_Manual_Eye_Pos_Young.txt_gabor.txt 10
+outputinfo /home/teenarahul/RandD2/ImageDatabase/normalized_without_hist_eqln/training_output.txt e01ham
+shypname model.xml
