@@ -19,6 +19,26 @@ using namespace std;
 ofstream training_data_outfile;
 ofstream test_data_outfile;
 
+enum expressions { ANGER, DISGUST, FEAR, JOY, NEUTRAL, SADNESS, SURPRISE };
+
+expressions get_expr_enum_const( string expr_label )
+{
+	if ( strcmp( expr_label.c_str(), "anger" ) == 0 )
+		return ANGER;
+	if ( strcmp( expr_label.c_str(), "disgust" ) == 0 )
+		return DISGUST;
+	if ( strcmp( expr_label.c_str(), "fear" ) == 0 )
+		return FEAR;
+	if ( strcmp( expr_label.c_str(), "joy" ) == 0 )
+		return JOY;
+	if ( strcmp( expr_label.c_str(), "neutral" ) == 0 )
+		return NEUTRAL;
+	if ( strcmp( expr_label.c_str(), "sadness" ) == 0 )
+		return SADNESS;
+	if ( strcmp( expr_label.c_str(), "surprise" ) == 0 )
+		return SURPRISE;
+}
+
 bool get_feature_vector( string full_image_filename, string feature_descriptor, CvPoint left_eye, CvPoint right_eye, vector1Df &feature_vector_out )
 {
 	IplImage* src = cvLoadImage( full_image_filename.c_str(), CV_LOAD_IMAGE_GRAYSCALE);
@@ -49,14 +69,14 @@ bool get_feature_vector( string full_image_filename, string feature_descriptor, 
     return true;
 }
 
-void append_to_training_data_file( vector1Df &feature_vector, string emotion_label )
+void append_to_training_data_file( vector1Df &feature_vector, expressions emotion_index )
 {
 	vector1Df::const_iterator it;
 	for( it = feature_vector.begin(); it < feature_vector.end(); it++ )
 	{
 		training_data_outfile << *it << "\t";
 	}
-	training_data_outfile << emotion_label << endl;
+	training_data_outfile << emotion_index << endl;
 }
 
 void append_to_test_data_file( vector1Df &feature_vector )
@@ -102,6 +122,7 @@ void generateTrainingData( string folder_path, string image_list_filename, strin
     string full_image_filename;
     string emotion_label;
     CvPoint left_eye, right_eye;
+    expressions emotion_index;
 
     infile >> image_filename;
 
@@ -116,12 +137,15 @@ void generateTrainingData( string folder_path, string image_list_filename, strin
         infile >> right_eye.y;
         infile >> emotion_label;
 
+        emotion_index = get_expr_enum_const( emotion_label );
+        cout << "Emotion index: " << emotion_index << endl;
+
     	full_image_filename = folder_path + image_filename;
     	feature_vector.clear();
 
     	if ( get_feature_vector( full_image_filename, feature_descriptor, left_eye, right_eye, feature_vector ) )
         {
-        	append_to_training_data_file( feature_vector, emotion_label );
+        	append_to_training_data_file( feature_vector, emotion_index );
         	if ( create_test_data_file_flag )
         	{
             	append_to_test_data_file( feature_vector );
@@ -142,7 +166,7 @@ int main( int argc, char *argv[] )
 {
 	if ( argc < 5 )
 	{
-		cout << "Expected command line arguments: <full path to directory> <image_list_filename> <feature descriptor> <0/1>" << endl;
+		cout << "Expected command line arguments: <full path to directory> <metadata_filename> <feature descriptor> <0/1>" << endl;
 		cout << "Possible values for feature descriptor: gabor, lbp, ldp" << endl;
 		cout << "Give 1 if a test data file should be created from the same images. Give 0, otherwise" << endl;
 		return -1;
